@@ -1,3 +1,8 @@
+static PAGE_SIZE_OFFSET: u8 = 16;
+static PAGE_SIZE_LEN: u8 = 2;
+static FILE_FORMAT_WRITE_VERSION_OFFSET: u8 = 18;
+static FILE_FORMAT_WRITE_VERSION_LEN: u8 = 18;
+
 enum FileFormatVersion {
     Legacy,
     Wal,
@@ -57,3 +62,11 @@ struct DatabaseHeader {
     version_valid_for: u8,
     sqlite_version_number: u8,
 }
+
+impl From<Vec<u8>> for DatabaseHeader {
+    fn from(value: Vec<u8>) -> Self {
+        todo!();
+
+    }
+}
+
