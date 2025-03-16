@@ -1,4 +1,6 @@
 mod database_header;
+mod database_page;
+mod database;
 
 use clap::Parser;
 use std::fs;
