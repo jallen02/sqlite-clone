@@ -3,8 +3,8 @@ mod database_page;
 mod database;
 
 use clap::Parser;
+use database::Database;
 use std::fs;
-use database_header::DatabaseHeader;
 use thiserror::Error;
 
 fn main() {
@@ -21,9 +21,9 @@ enum FileReadError {
     NotSqlFormat,
 }
 
-fn read_database(file_path: String) -> Result<DatabaseHeader, FileReadError> {
+fn read_database(file_path: String) -> Result<Database, FileReadError> {
     if let Ok(db_bytes) = fs::read(file_path) {
-        return DatabaseHeader::try_from(db_bytes[..100].to_vec()).map_err(|err| {
+        return Database::from_bytes(db_bytes[..100].to_vec()).map_err(|err| {
             println!("{:?}", err);
             FileReadError::NotSqlFormat
         });
