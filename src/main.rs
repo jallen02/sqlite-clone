@@ -1,6 +1,7 @@
 mod database_header;
 mod database_page;
 mod database;
+mod database_page_collection;
 
 use clap::Parser;
 use database::Database;
@@ -23,7 +24,7 @@ enum FileReadError {
 
 fn read_database(file_path: String) -> Result<Database, FileReadError> {
     if let Ok(db_bytes) = fs::read(file_path) {
-        return Database::from_bytes(db_bytes[..100].to_vec()).map_err(|err| {
+        return Database::from_bytes(db_bytes.to_vec()).map_err(|err| {
             println!("{:?}", err);
             FileReadError::NotSqlFormat
         });
