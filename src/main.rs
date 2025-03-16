@@ -1,7 +1,10 @@
+mod database_header;
+
 use clap::Parser;
 use std::fs;
-
-mod database_header;
+use database_header::lib::DatabaseHeader;
+use thiserror::Error;
+use anyhow::Result;
 
 fn main() {
     let args = Args::parse();
@@ -9,15 +12,20 @@ fn main() {
     println!("{:?}", db);
 }
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 enum FileReadError {
+    #[error("File doesn't exist")]
     FileDoesNotExist,
+    #[error("File doesn't conform to the SQLite file format")]
     NotSqlFormat,
 }
 
-fn read_database(file_path: String) -> Result<Vec<u8>, FileReadError> {
+fn read_database(file_path: String) -> Result<DatabaseHeader, FileReadError> {
     if let Ok(db_bytes) = fs::read(file_path) {
-        return Ok(db_bytes);
+        return DatabaseHeader::try_from(db_bytes[..100].to_vec()).map_err(|err| {
+            println!("{:?}", err);
+            FileReadError::NotSqlFormat
+        });
     }
     Err(FileReadError::FileDoesNotExist)
 }

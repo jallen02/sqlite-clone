@@ -1,1 +1,1 @@
-mod lib;
+pub mod lib;
