@@ -1,6 +1,5 @@
 use core::str;
 use thiserror::Error;
-use anyhow::Result;
 
 #[derive(Debug)]
 enum FileFormatVersion {
@@ -40,16 +39,15 @@ enum TextEncodingError {
     IncorrectVariant(u32),
 }
 
-impl TryFrom<[u8; 4]> for TextEncoding {
+impl TryFrom<u32> for TextEncoding {
     type Error = TextEncodingError;
 
-    fn try_from(value: [u8; 4]) -> Result<Self, Self::Error> {
-        let result = u32::from_be_bytes(value);
-        match result {
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        match value {
             0 => Ok(Self::Utf8),
             1 => Ok(Self::Utf16Le),
             2 => Ok(Self::Utf16Be),
-            _ => Err(TextEncodingError::IncorrectVariant(result))
+            _ => Err(TextEncodingError::IncorrectVariant(value))
         }
     }
 }
@@ -108,6 +106,34 @@ pub enum DatabaseHeaderError {
     IncorrectHeaderString(String),
     #[error("DB Header problem encountered while computing {0}")]
     MalformedDatabaseHeader(String),
+    #[error("Tried to parse value for {item_parsed} out of {num_bytes_recieved} bytes, but expected {num_bytes_expected}")]
+    IncorrectNumberOfBytes {
+        num_bytes_recieved: usize,
+        num_bytes_expected: usize,
+        item_parsed: String
+    },
+}
+
+fn get_u16_from_bytes(bytes: &[u8], item: &str) -> Result<u16, DatabaseHeaderError> {
+    Ok(u16::from_be_bytes(
+        <[u8; 2]>::try_from(bytes)
+            .map_err(|_| DatabaseHeaderError::IncorrectNumberOfBytes{
+                num_bytes_expected: 2,
+                num_bytes_recieved: bytes.len(),
+                item_parsed: item.to_owned(),
+            })?
+    ))
+}
+
+fn get_u32_from_bytes(bytes: &[u8], item: &str) -> Result<u32, DatabaseHeaderError> {
+    Ok(u32::from_be_bytes(
+        <[u8; 4]>::try_from(bytes)
+            .map_err(|_| DatabaseHeaderError::IncorrectNumberOfBytes{
+                num_bytes_expected: 2,
+                num_bytes_recieved: bytes.len(),
+                item_parsed: item.to_owned(),
+            })?
+    ))
 }
 
 impl TryFrom<Vec<u8>> for DatabaseHeader {
@@ -125,27 +151,29 @@ impl TryFrom<Vec<u8>> for DatabaseHeader {
             return Err(DatabaseHeaderError::IncorrectHeaderString(header_string.to_owned()));
         }
 
-        let page_size = u16::from_be_bytes(<[u8; 2]>::try_from(&value[16..18]).unwrap());
+        let page_size = get_u16_from_bytes(&value[16..18], "page_size")?;
         let file_format_write_version = FileFormatVersion::try_from(value[18]).unwrap();
         let file_format_read_version = FileFormatVersion::try_from(value[19]).unwrap();
         let reserved_space = value[20];
         let maximum_embedded_payload_fraction = value[21];
         let minimum_embedded_payload_fraction = value[22];
         let leaf_payload_fraction = value[23];
-        let file_change_counter = u32::from_be_bytes(<[u8; 4]>::try_from(&value[24..28]).unwrap());
-        let database_size_in_pages = u32::from_be_bytes(<[u8; 4]>::try_from(&value[28..32]).unwrap());
-        let first_freelist = u32::from_be_bytes(<[u8; 4]>::try_from(&value[32..36]).unwrap());
-        let num_freelist = u32::from_be_bytes(<[u8; 4]>::try_from(&value[36..40]).unwrap());
-        let schema_cookie = u32::from_be_bytes(<[u8; 4]>::try_from(&value[40..44]).unwrap());
-        let schema_format_number = u32::from_be_bytes(<[u8; 4]>::try_from(&value[44..48]).unwrap());
-        let default_page_cache_size = u32::from_be_bytes(<[u8; 4]>::try_from(&value[48..52]).unwrap());
-        let largest_root_page = u32::from_be_bytes(<[u8; 4]>::try_from(&value[52..56]).unwrap());
-        let text_encoding = TextEncoding::try_from(<[u8; 4]>::try_from(&value[56..60]).unwrap()).unwrap();
-        let user_version = u32::from_be_bytes(<[u8; 4]>::try_from(&value[60..64]).unwrap());
-        let incremental_vaccuum_mode = u32::from_be_bytes(<[u8; 4]>::try_from(&value[64..68]).unwrap()) > 0;
-        let application_id = u32::from_be_bytes(<[u8; 4]>::try_from(&value[68..72]).unwrap());
-        let version_valid_for = u32::from_be_bytes(<[u8; 4]>::try_from(&value[92..96]).unwrap());
-        let sqlite_version_number = u32::from_be_bytes(<[u8; 4]>::try_from(&value[96..100]).unwrap());
+        let file_change_counter = get_u32_from_bytes(&value[24..28], "file_change_counter")?;
+        let database_size_in_pages = get_u32_from_bytes(&value[28..32], "database_size_in_pages")?;
+        let first_freelist = get_u32_from_bytes(&value[32..36], "first_freelist")?;
+        let num_freelist = get_u32_from_bytes(&value[36..40], "num_freelist")?;
+        let schema_cookie = get_u32_from_bytes(&value[40..44], "schema_cookie")?;
+        let schema_format_number = get_u32_from_bytes(&value[44..48], "schema_format_number")?;
+        let default_page_cache_size = get_u32_from_bytes(&value[48..52], "default_page_cache_size")?;
+        let largest_root_page = get_u32_from_bytes(&value[52..56], "largest_root_page")?;
+        let text_encoding = TextEncoding::try_from(
+            get_u32_from_bytes(&value[56..60], "text_encoding")?)
+                .map_err(|_| DatabaseHeaderError::MalformedDatabaseHeader("text_encoding".to_owned()))?;
+        let user_version = get_u32_from_bytes(&value[60..64], "user_version")?;
+        let incremental_vaccuum_mode = get_u32_from_bytes(&value[64..68], "incremental_vaccuum_mode")? > 0;
+        let application_id = get_u32_from_bytes(&value[68..72], "application_id")?;
+        let version_valid_for = get_u32_from_bytes(&value[92..96], "version_valid_for")?;
+        let sqlite_version_number = get_u32_from_bytes(&value[96..100], "sqlite_version_number")?;
 
         Ok(DatabaseHeader {
             page_size,

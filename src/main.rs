@@ -2,9 +2,8 @@ mod database_header;
 
 use clap::Parser;
 use std::fs;
-use database_header::lib::DatabaseHeader;
+use database_header::DatabaseHeader;
 use thiserror::Error;
-use anyhow::Result;
 
 fn main() {
     let args = Args::parse();
