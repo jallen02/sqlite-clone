@@ -75,7 +75,7 @@ pub struct DatabaseHeader {
     // File change counter.
     file_change_counter: u32,
     // Size of the database file in pages. The "in-header database size".
-    database_page_size: u32,
+    database_size_in_pages: u32,
     // Page number of the first freelist trunk page.
     first_freelist: u32,
     // Total number of freelist pages.
@@ -133,7 +133,7 @@ impl TryFrom<Vec<u8>> for DatabaseHeader {
         let minimum_embedded_payload_fraction = value[22];
         let leaf_payload_fraction = value[23];
         let file_change_counter = u32::from_be_bytes(<[u8; 4]>::try_from(&value[24..28]).unwrap());
-        let database_page_size = u32::from_be_bytes(<[u8; 4]>::try_from(&value[28..32]).unwrap());
+        let database_size_in_pages = u32::from_be_bytes(<[u8; 4]>::try_from(&value[28..32]).unwrap());
         let first_freelist = u32::from_be_bytes(<[u8; 4]>::try_from(&value[32..36]).unwrap());
         let num_freelist = u32::from_be_bytes(<[u8; 4]>::try_from(&value[36..40]).unwrap());
         let schema_cookie = u32::from_be_bytes(<[u8; 4]>::try_from(&value[40..44]).unwrap());
@@ -156,7 +156,7 @@ impl TryFrom<Vec<u8>> for DatabaseHeader {
             minimum_embedded_payload_fraction,
             leaf_payload_fraction,
             file_change_counter,
-            database_page_size,
+            database_size_in_pages,
             first_freelist,
             num_freelist,
             schema_cookie,
