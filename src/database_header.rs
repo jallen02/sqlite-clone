@@ -1,13 +1,13 @@
 use core::str;
 use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum FileFormatVersion {
     Legacy,
     Wal,
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq, Eq)]
 enum FileFormatVersionError {
     #[error("File format should be either 1 or 2, was {0}")]
     IncorrectVariant(u8),
@@ -17,23 +17,22 @@ impl TryFrom<u8> for FileFormatVersion {
     type Error = FileFormatVersionError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
-        if value == 0 {
-            return Ok(Self::Legacy);
-        } else if value == 1 {
-            return Ok(Self::Wal);
+        match value {
+            1 => Ok(Self::Legacy),
+            2 => Ok(Self::Wal),
+            _ => Err(FileFormatVersionError::IncorrectVariant(value))
         }
-        Err(FileFormatVersionError::IncorrectVariant(value))
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum TextEncoding {
     Utf8,
     Utf16Le,
     Utf16Be,
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq, Eq)]
 enum TextEncodingError {
     #[error("File format should be either 1, 2, or 3, is {0}")]
     IncorrectVariant(u32),
@@ -44,9 +43,9 @@ impl TryFrom<u32> for TextEncoding {
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(Self::Utf8),
-            1 => Ok(Self::Utf16Le),
-            2 => Ok(Self::Utf16Be),
+            1 => Ok(Self::Utf8),
+            2 => Ok(Self::Utf16Le),
+            3 => Ok(Self::Utf16Be),
             _ => Err(TextEncodingError::IncorrectVariant(value))
         }
     }
@@ -98,7 +97,7 @@ pub struct DatabaseHeader {
     sqlite_version_number: u32,
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum DatabaseHeaderError {
     #[error("Length should be 100. Was {0}")]
     IncorrectLength(usize),
@@ -129,7 +128,7 @@ fn get_u32_from_bytes(bytes: &[u8], item: &str) -> Result<u32, DatabaseHeaderErr
     Ok(u32::from_be_bytes(
         <[u8; 4]>::try_from(bytes)
             .map_err(|_| DatabaseHeaderError::IncorrectNumberOfBytes{
-                num_bytes_expected: 2,
+                num_bytes_expected: 4,
                 num_bytes_recieved: bytes.len(),
                 item_parsed: item.to_owned(),
             })?
@@ -201,3 +200,54 @@ impl TryFrom<Vec<u8>> for DatabaseHeader {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::database_header::{FileFormatVersion, FileFormatVersionError, TextEncoding, TextEncodingError, DatabaseHeaderError};
+
+    #[test]
+    fn file_format_version_conversion() {
+        assert_eq!(FileFormatVersion::try_from(1), Ok(FileFormatVersion::Legacy));
+        assert_eq!(FileFormatVersion::try_from(2), Ok(FileFormatVersion::Wal));
+        assert_eq!(FileFormatVersion::try_from(3), Err(FileFormatVersionError::IncorrectVariant(3)));
+    }
+
+    #[test]
+    fn text_encoding_conversion() {
+        assert_eq!(TextEncoding::try_from(1), Ok(TextEncoding::Utf8));
+        assert_eq!(TextEncoding::try_from(2), Ok(TextEncoding::Utf16Le));
+        assert_eq!(TextEncoding::try_from(3), Ok(TextEncoding::Utf16Be));
+        assert_eq!(TextEncoding::try_from(4), Err(TextEncodingError::IncorrectVariant(4)));
+    }
+
+    #[test]
+    fn get_u16_from_bytes() {
+        assert_eq!(super::get_u16_from_bytes(&[0, 2], "test"), Ok(2));
+        assert_eq!(super::get_u16_from_bytes(&[0, 10], "test"), Ok(10));
+        assert_eq!(super::get_u16_from_bytes(&[1, 0], "test"), Ok(256));
+        assert_eq!(
+            super::get_u16_from_bytes(&[1, 0, 0], "test"),
+            Err(DatabaseHeaderError::IncorrectNumberOfBytes {
+                num_bytes_recieved: 3,
+                num_bytes_expected: 2,
+                item_parsed: "test".to_owned(),
+            }
+        ));
+    }
+
+    #[test]
+    fn get_u32_from_bytes() {
+        assert_eq!(super::get_u32_from_bytes(&[0, 0, 0, 2], "test"), Ok(2));
+        assert_eq!(super::get_u32_from_bytes(&[0, 0, 0, 10], "test"), Ok(10));
+        assert_eq!(super::get_u32_from_bytes(&[0, 0, 1, 0], "test"), Ok(256));
+        assert_eq!(super::get_u32_from_bytes(&[0, 1, 0, 0], "test"), Ok(65536));
+        assert_eq!(super::get_u32_from_bytes(&[1, 0, 0, 0], "test"), Ok(16777216));
+        assert_eq!(
+            super::get_u32_from_bytes(&[1, 0, 0], "test"),
+            Err(DatabaseHeaderError::IncorrectNumberOfBytes {
+                num_bytes_recieved: 3,
+                num_bytes_expected: 4,
+                item_parsed: "test".to_owned(),
+            }
+        ));
+    }
+}
