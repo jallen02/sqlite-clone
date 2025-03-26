@@ -1,3 +1,3 @@
-pub struct DatabasePageHeader {
+pub enum PageType {}
 
-}
+pub struct PageHeader {}

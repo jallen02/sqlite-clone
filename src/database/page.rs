@@ -2,7 +2,7 @@ use thiserror::Error;
 
 #[derive(Debug)]
 pub struct DatabasePage {
-    bytes: Vec<u8>
+    bytes: Vec<u8>,
 }
 
 #[derive(Debug, Error)]
@@ -17,13 +17,12 @@ impl DatabasePage {
     }
 }
 
-
 impl TryFrom<&[u8]> for DatabasePage {
     type Error = DatabasePageError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         Ok(DatabasePage {
-            bytes: value.to_vec()
+            bytes: value.to_vec(),
         })
     }
 }

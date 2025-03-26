@@ -20,7 +20,7 @@ impl TryFrom<u8> for FileFormatVersion {
         match value {
             1 => Ok(Self::Legacy),
             2 => Ok(Self::Wal),
-            _ => Err(FileFormatVersionError::IncorrectVariant(value))
+            _ => Err(FileFormatVersionError::IncorrectVariant(value)),
         }
     }
 }
@@ -46,7 +46,7 @@ impl TryFrom<u32> for TextEncoding {
             1 => Ok(Self::Utf8),
             2 => Ok(Self::Utf16Le),
             3 => Ok(Self::Utf16Be),
-            _ => Err(TextEncodingError::IncorrectVariant(value))
+            _ => Err(TextEncodingError::IncorrectVariant(value)),
         }
     }
 }
@@ -105,34 +105,34 @@ pub enum DatabaseHeaderError {
     IncorrectHeaderString(String),
     #[error("DB Header problem encountered while computing {0}")]
     MalformedDatabaseHeader(String),
-    #[error("Tried to parse value for {item_parsed} out of {num_bytes_recieved} bytes, but expected {num_bytes_expected}")]
+    #[error(
+        "Tried to parse value for {item_parsed} out of {num_bytes_recieved} bytes, but expected {num_bytes_expected}"
+    )]
     IncorrectNumberOfBytes {
         num_bytes_recieved: usize,
         num_bytes_expected: usize,
-        item_parsed: String
+        item_parsed: String,
     },
 }
 
 fn get_u16_from_bytes(bytes: &[u8], item: &str) -> Result<u16, DatabaseHeaderError> {
-    Ok(u16::from_be_bytes(
-        <[u8; 2]>::try_from(bytes)
-            .map_err(|_| DatabaseHeaderError::IncorrectNumberOfBytes{
-                num_bytes_expected: 2,
-                num_bytes_recieved: bytes.len(),
-                item_parsed: item.to_owned(),
-            })?
-    ))
+    Ok(u16::from_be_bytes(<[u8; 2]>::try_from(bytes).map_err(
+        |_| DatabaseHeaderError::IncorrectNumberOfBytes {
+            num_bytes_expected: 2,
+            num_bytes_recieved: bytes.len(),
+            item_parsed: item.to_owned(),
+        },
+    )?))
 }
 
 fn get_u32_from_bytes(bytes: &[u8], item: &str) -> Result<u32, DatabaseHeaderError> {
-    Ok(u32::from_be_bytes(
-        <[u8; 4]>::try_from(bytes)
-            .map_err(|_| DatabaseHeaderError::IncorrectNumberOfBytes{
-                num_bytes_expected: 4,
-                num_bytes_recieved: bytes.len(),
-                item_parsed: item.to_owned(),
-            })?
-    ))
+    Ok(u32::from_be_bytes(<[u8; 4]>::try_from(bytes).map_err(
+        |_| DatabaseHeaderError::IncorrectNumberOfBytes {
+            num_bytes_expected: 4,
+            num_bytes_recieved: bytes.len(),
+            item_parsed: item.to_owned(),
+        },
+    )?))
 }
 
 impl TryFrom<Vec<u8>> for DatabaseHeader {
@@ -147,7 +147,9 @@ impl TryFrom<Vec<u8>> for DatabaseHeader {
 
         let header_string = str::from_utf8(header_string_bytes).unwrap();
         if header_string != "SQLite format 3\0" {
-            return Err(DatabaseHeaderError::IncorrectHeaderString(header_string.to_owned()));
+            return Err(DatabaseHeaderError::IncorrectHeaderString(
+                header_string.to_owned(),
+            ));
         }
 
         let page_size = get_u16_from_bytes(&value[16..18], "page_size")?;
@@ -163,13 +165,16 @@ impl TryFrom<Vec<u8>> for DatabaseHeader {
         let num_freelist = get_u32_from_bytes(&value[36..40], "num_freelist")?;
         let schema_cookie = get_u32_from_bytes(&value[40..44], "schema_cookie")?;
         let schema_format_number = get_u32_from_bytes(&value[44..48], "schema_format_number")?;
-        let default_page_cache_size = get_u32_from_bytes(&value[48..52], "default_page_cache_size")?;
+        let default_page_cache_size =
+            get_u32_from_bytes(&value[48..52], "default_page_cache_size")?;
         let largest_root_page = get_u32_from_bytes(&value[52..56], "largest_root_page")?;
-        let text_encoding = TextEncoding::try_from(
-            get_u32_from_bytes(&value[56..60], "text_encoding")?)
-                .map_err(|_| DatabaseHeaderError::MalformedDatabaseHeader("text_encoding".to_owned()))?;
+        let text_encoding =
+            TextEncoding::try_from(get_u32_from_bytes(&value[56..60], "text_encoding")?).map_err(
+                |_| DatabaseHeaderError::MalformedDatabaseHeader("text_encoding".to_owned()),
+            )?;
         let user_version = get_u32_from_bytes(&value[60..64], "user_version")?;
-        let incremental_vaccuum_mode = get_u32_from_bytes(&value[64..68], "incremental_vaccuum_mode")? > 0;
+        let incremental_vaccuum_mode =
+            get_u32_from_bytes(&value[64..68], "incremental_vaccuum_mode")? > 0;
         let application_id = get_u32_from_bytes(&value[68..72], "application_id")?;
         let version_valid_for = get_u32_from_bytes(&value[92..96], "version_valid_for")?;
         let sqlite_version_number = get_u32_from_bytes(&value[96..100], "sqlite_version_number")?;
@@ -202,13 +207,22 @@ impl TryFrom<Vec<u8>> for DatabaseHeader {
 
 #[cfg(test)]
 mod tests {
-    use crate::database_header::{FileFormatVersion, FileFormatVersionError, TextEncoding, TextEncodingError, DatabaseHeaderError};
+    use crate::database_header::{
+        DatabaseHeaderError, FileFormatVersion, FileFormatVersionError, TextEncoding,
+        TextEncodingError,
+    };
 
     #[test]
     fn file_format_version_conversion() {
-        assert_eq!(FileFormatVersion::try_from(1), Ok(FileFormatVersion::Legacy));
+        assert_eq!(
+            FileFormatVersion::try_from(1),
+            Ok(FileFormatVersion::Legacy)
+        );
         assert_eq!(FileFormatVersion::try_from(2), Ok(FileFormatVersion::Wal));
-        assert_eq!(FileFormatVersion::try_from(3), Err(FileFormatVersionError::IncorrectVariant(3)));
+        assert_eq!(
+            FileFormatVersion::try_from(3),
+            Err(FileFormatVersionError::IncorrectVariant(3))
+        );
     }
 
     #[test]
@@ -216,7 +230,10 @@ mod tests {
         assert_eq!(TextEncoding::try_from(1), Ok(TextEncoding::Utf8));
         assert_eq!(TextEncoding::try_from(2), Ok(TextEncoding::Utf16Le));
         assert_eq!(TextEncoding::try_from(3), Ok(TextEncoding::Utf16Be));
-        assert_eq!(TextEncoding::try_from(4), Err(TextEncodingError::IncorrectVariant(4)));
+        assert_eq!(
+            TextEncoding::try_from(4),
+            Err(TextEncodingError::IncorrectVariant(4))
+        );
     }
 
     #[test]
@@ -230,8 +247,8 @@ mod tests {
                 num_bytes_recieved: 3,
                 num_bytes_expected: 2,
                 item_parsed: "test".to_owned(),
-            }
-        ));
+            })
+        );
     }
 
     #[test]
@@ -240,14 +257,17 @@ mod tests {
         assert_eq!(super::get_u32_from_bytes(&[0, 0, 0, 10], "test"), Ok(10));
         assert_eq!(super::get_u32_from_bytes(&[0, 0, 1, 0], "test"), Ok(256));
         assert_eq!(super::get_u32_from_bytes(&[0, 1, 0, 0], "test"), Ok(65536));
-        assert_eq!(super::get_u32_from_bytes(&[1, 0, 0, 0], "test"), Ok(16777216));
+        assert_eq!(
+            super::get_u32_from_bytes(&[1, 0, 0, 0], "test"),
+            Ok(16777216)
+        );
         assert_eq!(
             super::get_u32_from_bytes(&[1, 0, 0], "test"),
             Err(DatabaseHeaderError::IncorrectNumberOfBytes {
                 num_bytes_recieved: 3,
                 num_bytes_expected: 4,
                 item_parsed: "test".to_owned(),
-            }
-        ));
+            })
+        );
     }
 }

@@ -35,5 +35,5 @@ fn read_database(file_path: String) -> Result<Database, FileReadError> {
 struct Args {
     /// File path to database
     #[arg(short, long)]
-    file_path: String
+    file_path: String,
 }
