@@ -1,4 +1,5 @@
 mod database;
+mod util;
 
 use clap::Parser;
 use database::Database;

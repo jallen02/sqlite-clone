@@ -1,3 +1,4 @@
+use crate::util::{DecodeError, get_u16_from_bytes, get_u32_from_bytes};
 use core::str;
 use thiserror::Error;
 
@@ -105,34 +106,14 @@ pub enum DatabaseHeaderError {
     IncorrectHeaderString(String),
     #[error("DB Header problem encountered while computing {0}")]
     MalformedDatabaseHeader(String),
-    #[error(
-        "Tried to parse value for {item_parsed} out of {num_bytes_recieved} bytes, but expected {num_bytes_expected}"
-    )]
-    IncorrectNumberOfBytes {
-        num_bytes_recieved: usize,
-        num_bytes_expected: usize,
-        item_parsed: String,
-    },
+    #[error("Encountered error decoding: {0}")]
+    DecodeError(DecodeError),
 }
 
-fn get_u16_from_bytes(bytes: &[u8], item: &str) -> Result<u16, DatabaseHeaderError> {
-    Ok(u16::from_be_bytes(<[u8; 2]>::try_from(bytes).map_err(
-        |_| DatabaseHeaderError::IncorrectNumberOfBytes {
-            num_bytes_expected: 2,
-            num_bytes_recieved: bytes.len(),
-            item_parsed: item.to_owned(),
-        },
-    )?))
-}
-
-fn get_u32_from_bytes(bytes: &[u8], item: &str) -> Result<u32, DatabaseHeaderError> {
-    Ok(u32::from_be_bytes(<[u8; 4]>::try_from(bytes).map_err(
-        |_| DatabaseHeaderError::IncorrectNumberOfBytes {
-            num_bytes_expected: 4,
-            num_bytes_recieved: bytes.len(),
-            item_parsed: item.to_owned(),
-        },
-    )?))
+impl From<DecodeError> for DatabaseHeaderError {
+    fn from(value: DecodeError) -> Self {
+        Self::DecodeError(value)
+    }
 }
 
 impl TryFrom<Vec<u8>> for DatabaseHeader {
@@ -207,9 +188,8 @@ impl TryFrom<Vec<u8>> for DatabaseHeader {
 
 #[cfg(test)]
 mod tests {
-    use crate::database_header::{
-        DatabaseHeaderError, FileFormatVersion, FileFormatVersionError, TextEncoding,
-        TextEncodingError,
+    use crate::database::header::{
+        FileFormatVersion, FileFormatVersionError, TextEncoding, TextEncodingError,
     };
 
     #[test]
@@ -233,41 +213,6 @@ mod tests {
         assert_eq!(
             TextEncoding::try_from(4),
             Err(TextEncodingError::IncorrectVariant(4))
-        );
-    }
-
-    #[test]
-    fn get_u16_from_bytes() {
-        assert_eq!(super::get_u16_from_bytes(&[0, 2], "test"), Ok(2));
-        assert_eq!(super::get_u16_from_bytes(&[0, 10], "test"), Ok(10));
-        assert_eq!(super::get_u16_from_bytes(&[1, 0], "test"), Ok(256));
-        assert_eq!(
-            super::get_u16_from_bytes(&[1, 0, 0], "test"),
-            Err(DatabaseHeaderError::IncorrectNumberOfBytes {
-                num_bytes_recieved: 3,
-                num_bytes_expected: 2,
-                item_parsed: "test".to_owned(),
-            })
-        );
-    }
-
-    #[test]
-    fn get_u32_from_bytes() {
-        assert_eq!(super::get_u32_from_bytes(&[0, 0, 0, 2], "test"), Ok(2));
-        assert_eq!(super::get_u32_from_bytes(&[0, 0, 0, 10], "test"), Ok(10));
-        assert_eq!(super::get_u32_from_bytes(&[0, 0, 1, 0], "test"), Ok(256));
-        assert_eq!(super::get_u32_from_bytes(&[0, 1, 0, 0], "test"), Ok(65536));
-        assert_eq!(
-            super::get_u32_from_bytes(&[1, 0, 0, 0], "test"),
-            Ok(16777216)
-        );
-        assert_eq!(
-            super::get_u32_from_bytes(&[1, 0, 0], "test"),
-            Err(DatabaseHeaderError::IncorrectNumberOfBytes {
-                num_bytes_recieved: 3,
-                num_bytes_expected: 4,
-                item_parsed: "test".to_owned(),
-            })
         );
     }
 }
