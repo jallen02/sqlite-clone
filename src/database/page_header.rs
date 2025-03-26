@@ -1,3 +1,5 @@
-pub enum PageType {}
+pub enum PageType {
+
+}
 
 pub struct PageHeader {}
