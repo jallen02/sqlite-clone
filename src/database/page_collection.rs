@@ -1,4 +1,4 @@
-use crate::{database_page::DatabasePage, database_header::DatabaseHeader};
+use crate::{database_page::page::DatabasePage, database::header::DatabaseHeader};
 
 #[derive(Debug)]
 pub struct DatabasePageCollection {

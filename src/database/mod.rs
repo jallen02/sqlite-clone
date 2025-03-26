@@ -1,6 +1,11 @@
 use thiserror::Error;
 
-use crate::{database_header::{DatabaseHeader, DatabaseHeaderError}, database_page_collection::DatabasePageCollection};
+use crate::{database::header::{DatabaseHeader, DatabaseHeaderError}, database::page_collection::DatabasePageCollection};
+
+pub mod header;
+pub mod page;
+pub mod page_collection;
+pub mod page_header;
 
 #[derive(Debug)]
 pub struct Database {

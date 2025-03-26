@@ -1,7 +1,4 @@
-mod database_header;
-mod database_page;
 mod database;
-mod database_page_collection;
 
 use clap::Parser;
 use database::Database;
