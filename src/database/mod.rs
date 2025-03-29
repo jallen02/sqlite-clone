@@ -8,7 +8,6 @@ use crate::{
 pub mod header;
 pub mod page;
 pub mod page_collection;
-pub mod page_header;
 
 #[derive(Debug)]
 pub struct Database {

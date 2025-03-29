@@ -27,6 +27,28 @@ impl TryFrom<u8> for PageType {
 }
 
 #[derive(Debug)]
+pub struct CellOffsets(Vec<u16>);
+
+pub enum CellOffsetError {
+    CellOffsetDecodeError(DecodeError),
+}
+
+impl TryFrom<&[u8]> for CellOffsets {
+    type Error = CellOffsetError;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        let offsets: Result<Vec<u16>, CellOffsetError> = value
+            .chunks(2)
+            .map(|item| {
+                get_u16_from_bytes(item, "cell_offsets")
+                    .map_err(|err| CellOffsetError::CellOffsetDecodeError(err))
+            })
+            .collect();
+        offsets.map(CellOffsets)
+    }
+}
+
+#[derive(Debug)]
 pub struct PageHeader {
     page_type: PageType,
     first_page_offset: u16,
@@ -35,6 +57,7 @@ pub struct PageHeader {
     num_fragmented_free_bytes: u8,
     // Only Interior pages contain a right-most pointer
     right_most_pointer: Option<u32>,
+    cell_offsets: CellOffsets,
 }
 
 pub enum PageHeaderError {
@@ -55,7 +78,6 @@ impl From<PageTypeError> for PageHeaderError {
     fn from(value: PageTypeError) -> Self {
         match value {
             PageTypeError::InvalidType(t) => Self::InvalidPageType(t),
-            _ => Self::Unknown("Unknown page type found".to_owned()),
         }
     }
 }
