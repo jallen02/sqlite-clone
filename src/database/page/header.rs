@@ -1,4 +1,5 @@
 use crate::util::{DecodeError, get_u16_from_bytes, get_u32_from_bytes};
+use thiserror::Error;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum PageType {
@@ -8,7 +9,9 @@ pub enum PageType {
     LeafTable,
 }
 
+#[derive(Debug, Error)]
 pub enum PageTypeError {
+    #[error("Invalid page type encountered. Valid options are 2, 5, 10, 13. Found: {0}")]
     InvalidType(u8),
 }
 
@@ -57,15 +60,24 @@ pub struct PageHeader {
     num_fragmented_free_bytes: u8,
     // Only Interior pages contain a right-most pointer
     right_most_pointer: Option<u32>,
-    cell_offsets: CellOffsets,
 }
 
+impl PageHeader {
+    pub fn get_number_of_cells(&self) -> u16 {
+        self.number_of_cells
+    }
+}
+
+#[derive(Debug, Error)]
 pub enum PageHeaderError {
+    #[error("The header is empty")]
     EmptyHeader,
+    #[error("The page header has an invalid length for the type. Page Type: {0:?}, length {1}")]
     InvalidLength(PageType, usize),
+    #[error("Invalid page type: {0}")]
     InvalidPageType(u8),
+    #[error("Error decoding: {0}")]
     DecodeError(DecodeError),
-    Unknown(String),
 }
 
 impl From<DecodeError> for PageHeaderError {

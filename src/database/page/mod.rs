@@ -1,27 +1,35 @@
 use crate::util::{DecodeError, get_u16_from_bytes};
 use thiserror::Error;
 
-use header::{PageHeader, PageHeaderError, PageType};
+use header::{PageHeader, PageHeaderError, PageType, PageTypeError};
 
 pub mod header;
 
 #[derive(Debug)]
 pub struct DatabasePage {
     page_header: PageHeader,
-    cell_offsets: Vec<u16>,
+    cell_offsets: CellOffsets,
     bytes: Vec<u8>,
 }
 
 #[derive(Debug, Error)]
 pub enum DatabasePageError {
-    #[error("blah!")]
-    Blah,
+    #[error("Encountered an error with the cell offsets:\n{0}")]
+    CellOffsetError(CellOffsetError),
+    #[error("Encountered an error calculating page type:\n{0}")]
+    PageTypeError(PageTypeError),
+    #[error("")]
+    PageHeaderError(PageHeaderError),
+    #[error("Unknown error")]
+    Unknown,
 }
 
 #[derive(Debug)]
 pub struct CellOffsets(Vec<u16>);
 
+#[derive(Debug, Error)]
 pub enum CellOffsetError {
+    #[error("Encountered an error decoding cell offsets:\n{0}")]
     CellOffsetDecodeError(DecodeError),
 }
 
@@ -33,7 +41,7 @@ impl TryFrom<&[u8]> for CellOffsets {
             .chunks(2)
             .map(|item| {
                 get_u16_from_bytes(item, "cell_offsets")
-                    .map_err(|err| CellOffsetError::CellOffsetDecodeError(err))
+                    .map_err(CellOffsetError::CellOffsetDecodeError)
             })
             .collect();
         offsets.map(CellOffsets)
@@ -44,8 +52,10 @@ impl TryFrom<&[u8]> for DatabasePage {
     type Error = DatabasePageError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        let page_type: PageType = value[0].try_into().map_err(|_| DatabasePageError::Blah)?;
-        let mut next_byte = 0;
+        let page_type: PageType = value[0]
+            .try_into()
+            .map_err(DatabasePageError::PageTypeError)?;
+        let mut next_byte: usize = 0;
         let page_header: Result<PageHeader, PageHeaderError> = match page_type {
             PageType::InteriorIndex | PageType::InteriorTable => {
                 next_byte += 12;
@@ -58,13 +68,19 @@ impl TryFrom<&[u8]> for DatabasePage {
         }
         .try_into();
 
-        if let Ok(header) = page_header {
-            return Ok(DatabasePage {
-                page_header: header,
-                bytes: value.to_vec(),
-            });
-        } else {
-            return Err(DatabasePageError::Blah);
+        match page_header {
+            Ok(header) => {
+                let cell_offsets_len: usize = (header.get_number_of_cells() * 2).into();
+                let cell_offsets: CellOffsets = value[next_byte..(next_byte + cell_offsets_len)]
+                    .try_into()
+                    .map_err(DatabasePageError::CellOffsetError)?;
+                Ok(DatabasePage {
+                    cell_offsets,
+                    page_header: header,
+                    bytes: value.to_vec(),
+                })
+            }
+            Err(err) => Err(DatabasePageError::PageHeaderError(err)),
         }
     }
 }
