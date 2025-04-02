@@ -5,6 +5,5 @@ mod util;
 use ui::cli::start_cli;
 
 fn main() {
-    let result = start_cli();
-    println!("{result:?}");
+    let _ = start_cli();
 }

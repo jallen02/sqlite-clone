@@ -26,7 +26,6 @@ impl Database {
         let header_bytes = db_file[..100].to_vec();
         let header =
             DatabaseHeader::try_from(header_bytes).map_err(DatabaseReadError::InvalidHeader)?;
-        println!("{header:?}");
         let pages = PageCollection::from_bytes(db_file, &header);
         Ok(Database { header, pages })
     }

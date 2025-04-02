@@ -8,7 +8,7 @@ use ratatui::{
 };
 use thiserror::Error;
 
-use crate::database::{Database, DatabaseReadError};
+use crate::database::{Database, DatabaseReadError, header::FileFormatVersion};
 
 use super::cli::Args;
 
@@ -33,6 +33,34 @@ impl Widget for &MainPanel {
             format!(
                 "there are {} pages",
                 self.database.header.database_size_in_pages
+            ),
+            Style::default(),
+        );
+        buf.set_string(
+            area.x,
+            area.y + 1,
+            format!("each page is {} bytes", self.database.header.page_size),
+            Style::default(),
+        );
+        buf.set_string(
+            area.x,
+            area.y + 2,
+            format!(
+                "database is in {:?} write mode - options are {:?} and {:?}",
+                self.database.header.file_format_write_version,
+                FileFormatVersion::Wal,
+                FileFormatVersion::Legacy
+            ),
+            Style::default(),
+        );
+        buf.set_string(
+            area.x,
+            area.y + 3,
+            format!(
+                "database is in {:?} read mode - options are {:?} and {:?}",
+                self.database.header.file_format_read_version,
+                FileFormatVersion::Wal,
+                FileFormatVersion::Legacy
             ),
             Style::default(),
         );
