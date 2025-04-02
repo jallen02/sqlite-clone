@@ -6,7 +6,7 @@ use header::{PageHeader, PageHeaderError, PageType, PageTypeError};
 pub mod header;
 
 #[derive(Debug)]
-pub struct DatabasePage {
+pub struct Page {
     page_header: PageHeader,
     cell_offsets: CellOffsets,
     bytes: Vec<u8>,
@@ -15,13 +15,11 @@ pub struct DatabasePage {
 #[derive(Debug, Error)]
 pub enum DatabasePageError {
     #[error("Encountered an error with the cell offsets:\n{0}")]
-    CellOffsetError(CellOffsetError),
+    CellOffset(CellOffsetError),
     #[error("Encountered an error calculating page type:\n{0}")]
-    PageTypeError(PageTypeError),
+    PageType(PageTypeError),
     #[error("")]
-    PageHeaderError(PageHeaderError),
-    #[error("Unknown error")]
-    Unknown,
+    PageHeader(PageHeaderError),
 }
 
 #[derive(Debug)]
@@ -30,7 +28,7 @@ pub struct CellOffsets(Vec<u16>);
 #[derive(Debug, Error)]
 pub enum CellOffsetError {
     #[error("Encountered an error decoding cell offsets:\n{0}")]
-    CellOffsetDecodeError(DecodeError),
+    Decode(DecodeError),
 }
 
 impl TryFrom<&[u8]> for CellOffsets {
@@ -39,22 +37,17 @@ impl TryFrom<&[u8]> for CellOffsets {
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         let offsets: Result<Vec<u16>, CellOffsetError> = value
             .chunks(2)
-            .map(|item| {
-                get_u16_from_bytes(item, "cell_offsets")
-                    .map_err(CellOffsetError::CellOffsetDecodeError)
-            })
+            .map(|item| get_u16_from_bytes(item, "cell_offsets").map_err(CellOffsetError::Decode))
             .collect();
         offsets.map(CellOffsets)
     }
 }
 
-impl TryFrom<&[u8]> for DatabasePage {
+impl TryFrom<&[u8]> for Page {
     type Error = DatabasePageError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        let page_type: PageType = value[0]
-            .try_into()
-            .map_err(DatabasePageError::PageTypeError)?;
+        let page_type: PageType = value[0].try_into().map_err(DatabasePageError::PageType)?;
         let mut next_byte: usize = 0;
         let page_header: Result<PageHeader, PageHeaderError> = match page_type {
             PageType::InteriorIndex | PageType::InteriorTable => {
@@ -73,14 +66,14 @@ impl TryFrom<&[u8]> for DatabasePage {
                 let cell_offsets_len: usize = (header.get_number_of_cells() * 2).into();
                 let cell_offsets: CellOffsets = value[next_byte..(next_byte + cell_offsets_len)]
                     .try_into()
-                    .map_err(DatabasePageError::CellOffsetError)?;
-                Ok(DatabasePage {
+                    .map_err(DatabasePageError::CellOffset)?;
+                Ok(Page {
                     cell_offsets,
                     page_header: header,
                     bytes: value.to_vec(),
                 })
             }
-            Err(err) => Err(DatabasePageError::PageHeaderError(err)),
+            Err(err) => Err(DatabasePageError::PageHeader(err)),
         }
     }
 }

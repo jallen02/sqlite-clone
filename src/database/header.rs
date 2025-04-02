@@ -3,13 +3,13 @@ use core::str;
 use thiserror::Error;
 
 #[derive(Debug, PartialEq, Eq)]
-enum FileFormatVersion {
+pub enum FileFormatVersion {
     Legacy,
     Wal,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
-enum FileFormatVersionError {
+pub enum FileFormatVersionError {
     #[error("File format should be either 1 or 2, was {0}")]
     IncorrectVariant(u8),
 }
@@ -27,14 +27,14 @@ impl TryFrom<u8> for FileFormatVersion {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-enum TextEncoding {
+pub enum TextEncoding {
     Utf8,
     Utf16Le,
     Utf16Be,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
-enum TextEncodingError {
+pub enum TextEncodingError {
     #[error("File format should be either 1, 2, or 3, is {0}")]
     IncorrectVariant(u32),
 }
@@ -55,44 +55,44 @@ impl TryFrom<u32> for TextEncoding {
 // https://www.sqlite.org/fileformat.html
 #[derive(Debug)]
 pub struct DatabaseHeader {
-    // The database page size in bytes.
-    // Must be a power of two between 512 and 32768 inclusive, or the value 1 representing a page size of 65536.
+    /// The database page size in bytes.
+    /// Must be a power of two between 512 and 32768 inclusive, or the value 1 representing a page size of 65536.
     pub page_size: u16,
-    // File format write version. 1 for legacy; 2 for WAL.
+    /// File format write version. 1 for legacy; 2 for WAL.
     pub file_format_write_version: FileFormatVersion,
-    // File format read version. 1 for legacy; 2 for WAL.
+    /// File format read version. 1 for legacy; 2 for WAL.
     pub file_format_read_version: FileFormatVersion,
-    // Bytes of unused "reserved" space at the end of each page. Usually 0.
+    /// Bytes of unused "reserved" space at the end of each page. Usually 0.
     pub reserved_space: u8,
-    // Maximum embedded payload fraction. Must be 64.
+    /// Maximum embedded payload fraction. Must be 64.
     pub maximum_embedded_payload_fraction: u8,
-    // Minimum embedded payload fraction. Must be 32.
+    /// Minimum embedded payload fraction. Must be 32.
     pub minimum_embedded_payload_fraction: u8,
-    // Leaf payload fraction. Must be 32.
+    /// Leaf payload fraction. Must be 32.
     pub leaf_payload_fraction: u8,
-    // File change counter.
+    /// File change counter.
     pub file_change_counter: u32,
-    // Size of the database file in pages. The "in-header database size".
+    /// Size of the database file in pages. The "in-header database size".
     pub database_size_in_pages: u32,
-    // Page number of the first freelist trunk page.
+    /// Page number of the first freelist trunk page.
     pub first_freelist: u32,
-    // Total number of freelist pages.
+    /// Total number of freelist pages.
     pub num_freelist: u32,
-    // The schema cookie.
+    /// The schema cookie.
     pub schema_cookie: u32,
-    // The schema format number. Supported schema formats are 1, 2, 3, and 4.
+    /// The schema format number. Supported schema formats are 1, 2, 3, and 4.
     pub schema_format_number: u32,
-    // Default page cache size.
+    /// Default page cache size.
     pub default_page_cache_size: u32,
-    // The page number of the largest root b-tree page when in auto-vacuum or incremental-vacuum modes, or zero otherwise.
+    /// The page number of the largest root b-tree page when in auto-vacuum or incremental-vacuum modes, or zero otherwise.
     pub largest_root_page: u32,
-    // The database text encoding. A value of 1 means UTF-8. A value of 2 means UTF-16le. A value of 3 means UTF-16be.
+    /// The database text encoding. A value of 1 means UTF-8. A value of 2 means UTF-16le. A value of 3 means UTF-16be.
     pub text_encoding: TextEncoding,
-    // The "user version" as read and set by the user_version pragma.
+    /// The "user version" as read and set by the user_version pragma.
     pub user_version: u32,
-    // True (non-zero) for incremental-vacuum mode. False (zero) otherwise.
+    /// True (non-zero) for incremental-vacuum mode. False (zero) otherwise.
     pub incremental_vaccuum_mode: bool,
-    // The "Application ID" set by PRAGMA application_id.
+    /// The "Application ID" set by PRAGMA application_id.
     pub application_id: u32,
     pub version_valid_for: u32,
     pub sqlite_version_number: u32,

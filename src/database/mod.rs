@@ -11,7 +11,7 @@ pub mod page_collection;
 
 #[derive(Debug)]
 pub struct Database {
-    header: DatabaseHeader,
+    pub header: DatabaseHeader,
     pages: PageCollection,
 }
 

@@ -32,8 +32,10 @@ impl TryFrom<u8> for PageType {
 #[derive(Debug)]
 pub struct CellOffsets(Vec<u16>);
 
+#[derive(Debug, Error)]
 pub enum CellOffsetError {
-    CellOffsetDecodeError(DecodeError),
+    #[error("Encountered error decoding cell offsets: {0}")]
+    Decode(DecodeError),
 }
 
 impl TryFrom<&[u8]> for CellOffsets {
@@ -42,10 +44,7 @@ impl TryFrom<&[u8]> for CellOffsets {
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         let offsets: Result<Vec<u16>, CellOffsetError> = value
             .chunks(2)
-            .map(|item| {
-                get_u16_from_bytes(item, "cell_offsets")
-                    .map_err(|err| CellOffsetError::CellOffsetDecodeError(err))
-            })
+            .map(|item| get_u16_from_bytes(item, "cell_offsets").map_err(CellOffsetError::Decode))
             .collect();
         offsets.map(CellOffsets)
     }
@@ -77,12 +76,12 @@ pub enum PageHeaderError {
     #[error("Invalid page type: {0}")]
     InvalidPageType(u8),
     #[error("Error decoding: {0}")]
-    DecodeError(DecodeError),
+    Decode(DecodeError),
 }
 
 impl From<DecodeError> for PageHeaderError {
     fn from(value: DecodeError) -> Self {
-        Self::DecodeError(value)
+        Self::Decode(value)
     }
 }
 
